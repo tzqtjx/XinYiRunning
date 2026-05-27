@@ -21,17 +21,18 @@ jobs:
       - name: Install MAUI workload
         run: dotnet workload install maui
 
-      - name: Build IPA
+      - name: Build iOS App
         run: |
-          dotnet publish RecordTableApp.csproj \
+          dotnet build RecordTableApp.csproj \
             -f net8.0-ios \
             -c Release \
-            -p:ArchiveOnBuild=true \
-            -p:RuntimeIdentifier=ios-arm64
+            -p:RuntimeIdentifier=ios-arm64 \
+            -p:CodesignKey="" \
+            -p:CodesignProvision=""
 
-      - name: Upload IPA
+      - name: Upload iOS App
         uses: actions/upload-artifact@v4
         with:
           name: XinYiRunning.iOS
-          path: bin/Release/net8.0-ios/publish/*.ipa
+          path: bin/Release/net8.0-ios/ios-arm64/*.app
           if-no-files-found: warn
