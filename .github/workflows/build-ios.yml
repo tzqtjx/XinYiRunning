@@ -50,7 +50,7 @@ jobs:
           if [ -n "$CODESIGN_KEY" ]; then
             EXTRA_ARGS="-p:CodesignKey=\"$CODESIGN_KEY\""
           fi
-          dotnet publish src/RecordTableApp/RecordTableApp.csproj \
+          dotnet publish RecordTableApp.csproj \
             -f net10.0-ios \
             -c Release \
             -p:ArchiveOnBuild=true \
