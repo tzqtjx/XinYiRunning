@@ -1,0 +1,12 @@
+@page "/test-record"
+@inject NavigationManager Navigation
+
+<div class="page-container">
+    <div class="win11-card test-card" @onclick='() => Navigation.NavigateTo("/person-select")'>
+        <span class="card-label">测试</span>
+    </div>
+    <div class="win11-card record-card" @onclick='() => Navigation.NavigateTo("/records")'>
+        <span class="card-label">记录</span>
+    </div>
+    <button class="btn-full-width btn-return" @onclick='() => Navigation.NavigateTo("/")'>返回</button>
+</div>

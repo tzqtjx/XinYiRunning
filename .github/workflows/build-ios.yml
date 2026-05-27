@@ -1,0 +1,65 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui
+
+      - name: Setup code signing
+        env:
+          IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+        run: |
+          if [ -z "$IOS_DIST_CERT_BASE64" ]; then
+            echo "No signing certificate configured, will build unsigned IPA"
+            exit 0
+          fi
+          CERT_PATH=$RUNNER_TEMP/distribution.p12
+          PP_PATH=$RUNNER_TEMP/app.mobileprovision
+          echo "$IOS_DIST_CERT_BASE64" | base64 -d -o "$CERT_PATH"
+          echo "$IOS_PROVISION_PROFILE_BASE64" | base64 -d -o "$PP_PATH"
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import "$CERT_PATH" -k build.keychain -P "$IOS_DIST_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Build IPA
+        run: |
+          CODESIGN_KEY="${{ secrets.IOS_CODESIGN_KEY }}"
+          EXTRA_ARGS=""
+          if [ -n "$CODESIGN_KEY" ]; then
+            EXTRA_ARGS="-p:CodesignKey=\"$CODESIGN_KEY\""
+          fi
+          dotnet publish src/RecordTableApp/RecordTableApp.csproj \
+            -f net10.0-ios \
+            -c Release \
+            -p:ArchiveOnBuild=true \
+            -p:RuntimeIdentifier=ios-arm64 \
+            $EXTRA_ARGS
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: XinYiRunning.iOS
+          path: src/RecordTableApp/bin/Release/net10.0-ios/publish/*.ipa
+          if-no-files-found: warn

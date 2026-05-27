@@ -1,0 +1,141 @@
+@page "/leaderboard"
+@inject NavigationManager Navigation
+@inject AppState AppState
+
+<div class="page-container" @onclick="OnBackgroundClick">
+    <div class="lb-header">
+        <button class="lb-btn-back" @onclick:stopPropagation="true" @onclick='() => Navigation.NavigateTo("/")'>返回</button>
+        <span class="lb-title">三公里榜</span>
+        @if (editMode)
+        {
+            <button class="lb-btn-add" @onclick:stopPropagation="true" @onclick="ShowAddDialog">添加数据</button>
+        }
+        else
+        {
+            <button class="lb-btn-edit" @onclick:stopPropagation="true" @onclick="EnterEditMode">编辑</button>
+        }
+    </div>
+
+    @if (AppState.Leaderboard.Count == 0)
+    {
+        <span style="color:#999;font-size:16px;margin-top:40px;">暂无数据</span>
+    }
+    else
+    {
+        <div class="lb-list" @onclick:stopPropagation="true">
+            @foreach (var (entry, index) in AppState.Leaderboard.OrderBy(e => e.Time).Select((e, i) => (e, i)))
+            {
+                var rank = index + 1;
+                var timeColor = GetTimeColorClass(entry.Time);
+                <div class="lb-entry">
+                    @if (editMode)
+                    {
+                        <span class="lb-delete-x"
+                              @onclick='() => DeleteEntry(entry)'>×</span>
+                    }
+                    <span class="lb-rank">@rank</span>
+                    <span class="lb-name">@entry.Name</span>
+                    <span class="lb-time @timeColor">@FormatTime(entry.Time)</span>
+                    <span class="lb-date">@entry.ApproxDate</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (showAddDialog)
+{
+    <div class="dialog-overlay" @onclick="HideAddDialog">
+        <div class="dialog-box" @onclick:stopPropagation="true">
+            <input @bind="newName" placeholder="名称" class="dialog-input" />
+            <input @bind="newDate" placeholder="大致日期（如 2025/05）" class="dialog-input" />
+            <input @bind="newTime" placeholder="耗时（如 11:30）" class="dialog-input" />
+            <button class="btn-black" @onclick="AddEntry" disabled="@(!CanAdd())">确定</button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool editMode;
+    private bool showAddDialog;
+    private string newName = "";
+    private string newDate = "";
+    private string newTime = "";
+
+    private void EnterEditMode() => editMode = true;
+
+    private void OnBackgroundClick()
+    {
+        if (editMode) editMode = false;
+    }
+
+    private void ShowAddDialog()
+    {
+        showAddDialog = true;
+        newName = "";
+        newDate = "";
+        newTime = "";
+    }
+
+    private void HideAddDialog()
+    {
+        showAddDialog = false;
+    }
+
+    private bool CanAdd()
+    {
+        return !string.IsNullOrWhiteSpace(newName)
+            && !string.IsNullOrWhiteSpace(newDate)
+            && !string.IsNullOrWhiteSpace(newTime)
+            && TryParseTime(newTime, out _);
+    }
+
+    private async Task AddEntry()
+    {
+        if (!TryParseTime(newTime, out var time)) return;
+        AppState.Leaderboard.Add(new LeaderboardEntry
+        {
+            Name = newName.Trim(),
+            ApproxDate = newDate.Trim(),
+            Time = time
+        });
+        await AppState.SaveLeaderboardAsync();
+        HideAddDialog();
+    }
+
+    private async Task DeleteEntry(LeaderboardEntry entry)
+    {
+        AppState.Leaderboard.Remove(entry);
+        await AppState.SaveLeaderboardAsync();
+    }
+
+    private bool TryParseTime(string input, out TimeSpan time)
+    {
+        time = TimeSpan.Zero;
+        if (string.IsNullOrWhiteSpace(input)) return false;
+        var parts = input.Trim().Split(':');
+        if (parts.Length != 2) return false;
+        if (!int.TryParse(parts[0], out var minutes)) return false;
+        if (!int.TryParse(parts[1], out var seconds)) return false;
+        if (seconds < 0 || seconds >= 60) return false;
+        time = TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds);
+        return true;
+    }
+
+    private string FormatTime(TimeSpan t)
+    {
+        return $"{(int)t.TotalMinutes}:{t.Seconds:D2}";
+    }
+
+    private string GetTimeColorClass(TimeSpan time)
+    {
+        var totalMinutes = time.TotalMinutes;
+        if (totalMinutes <= 11) return "lb-time-rainbow";
+        if (totalMinutes <= 12) return "lb-time-tier1";
+        if (totalMinutes <= 13) return "lb-time-tier2";
+        if (totalMinutes <= 14) return "lb-time-tier3";
+        if (totalMinutes <= 15) return "lb-time-tier4";
+        if (totalMinutes <= 16) return "lb-time-tier5";
+        return "lb-time-tier6";
+    }
+}

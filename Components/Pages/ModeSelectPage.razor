@@ -1,0 +1,38 @@
+@page "/mode-select"
+@inject NavigationManager Navigation
+@inject AppState AppState
+
+<div class="page-container">
+    <h3 class="page-title">选择模式</h3>
+    <div class="win11-card mode-card" @onclick='() => SelectMode("3km")'>
+        <span class="card-label">三公里</span>
+    </div>
+    <div class="win11-card mode-card">
+        <span class="card-label">输入圈数</span>
+        <div class="lap-input-row">
+            <input type="number" @bind="customLaps" placeholder="输入圈数" class="dialog-input" min="1" />
+            <button class="btn-black" @onclick='() => SelectMode("custom")' disabled="@(customLaps < 1)">确定</button>
+        </div>
+    </div>
+    <button class="btn-full-width btn-return" @onclick='() => Navigation.NavigateTo("/person-select")'>返回</button>
+</div>
+
+@code {
+    private int customLaps = 0;
+
+    private void SelectMode(string mode)
+    {
+        AppState.Mode = mode;
+        if (mode == "3km")
+            AppState.TotalLaps = 25;
+        else
+            AppState.TotalLaps = customLaps;
+
+        foreach (var person in AppState.SelectedPersons)
+        {
+            AppState.PersonLaps[person] = 0;
+            AppState.PersonTimes[person] = TimeSpan.Zero;
+        }
+        Navigation.NavigateTo("/timer");
+    }
+}

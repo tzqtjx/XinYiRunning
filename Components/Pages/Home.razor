@@ -1,0 +1,40 @@
+@page "/"
+@inject NavigationManager Navigation
+@inject AppState AppState
+
+@if (!AppState.ServerOnline)
+{
+    <div class="server-offline">
+        <span class="server-offline-text">服务器已关闭</span>
+        <button class="btn-black" @onclick="RetryConnect">重试</button>
+    </div>
+}
+else
+{
+    <div class="home-container">
+        <div class="card-strip card-top" @onclick='() => Navigation.NavigateTo("/leaderboard")'>
+            <span class="card-text rainbow-text">三公里榜</span>
+        </div>
+        <div class="card-strip card-middle" @onclick='() => Navigation.NavigateTo("/test-record")'>
+            <span class="card-text card-text-white">明志班</span>
+        </div>
+        <div class="card-strip card-bottom" @onclick='() => Navigation.NavigateTo("/tc/test-record")'>
+            <span class="card-text card-text-black">天才班</span>
+        </div>
+    </div>
+}
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AppState.ServerOnline)
+        {
+            await AppState.CheckServerAsync();
+        }
+    }
+
+    private async Task RetryConnect()
+    {
+        await AppState.CheckServerAsync();
+    }
+}

@@ -1,0 +1,28 @@
+@page "/records"
+@inject NavigationManager Navigation
+@inject AppState AppState
+
+<div class="page-container">
+    <h3 class="page-title">测试记录</h3>
+
+    @if (AppState.Records.Count == 0)
+    {
+        <span style="color:#999;font-size:16px;margin-top:40px;">暂无记录</span>
+    }
+    else
+    {
+        var i = 0;
+        foreach (var record in AppState.Records)
+        {
+            var index = i;
+            <div class="win11-card record-entry"
+                 @onclick='() => Navigation.NavigateTo($"/record-detail/{index}")'>
+                <span class="record-date">@record.Date.ToString("yyyy/MM/dd")</span>
+                <span class="record-mode">@record.ModeLabel</span>
+            </div>
+            i++;
+        }
+    }
+
+    <button class="btn-full-width btn-return" @onclick='() => Navigation.NavigateTo("/test-record")'>返回</button>
+</div>

@@ -1,0 +1,161 @@
+@page "/timer"
+@inject NavigationManager Navigation
+@inject AppState AppState
+@implements IDisposable
+
+<div class="page-container">
+    <div class="win11-card timer-main-card">
+        <div class="timer-display">@FormatTime(AppState.ElapsedTime)</div>
+        @if (!AppState.IsRunning)
+        {
+            <button class="btn-start" @onclick="StartTimer">开始</button>
+        }
+        else if (!AppState.IsPaused)
+        {
+            <button class="btn-pause" @onclick="PauseTimer">暂停</button>
+        }
+        else
+        {
+            <div style="display:flex;gap:12px;width:100%;">
+                <button class="btn-half btn-stop" @onclick="StopTimer">停止</button>
+                <button class="btn-half btn-continue" @onclick="ResumeTimer">继续</button>
+            </div>
+        }
+    </div>
+
+    <div class="person-list">
+        @foreach (var person in AppState.SelectedPersons)
+        {
+            var laps = AppState.PersonLaps.GetValueOrDefault(person);
+            var completed = laps >= AppState.TotalLaps;
+            <div class="person-row win11-card">
+                @if (completed)
+                {
+                    <span class="btn-lap-completed">完成</span>
+                }
+                else
+                {
+                    <button class="btn-lap" @onclick='() => ChangeLap(person, -1)'>减圈</button>
+                }
+                <span class="person-name">@person</span>
+                <span class="person-time">@FormatTime(AppState.PersonTimes.GetValueOrDefault(person))</span>
+                <span class="person-laps">@laps</span>
+                @if (completed)
+                {
+                    <span class="btn-lap-completed">完成</span>
+                }
+                else
+                {
+                    <button class="btn-lap" @onclick='() => ChangeLap(person, 1)'>加圈</button>
+                }
+            </div>
+        }
+    </div>
+
+    <button class="btn-full-width btn-return" @onclick="ShowBackConfirm">返回</button>
+</div>
+
+@if (showBackConfirm)
+{
+    <div class="dialog-overlay" @onclick="HideBackConfirm">
+        <div class="dialog-box" @onclick:stopPropagation="true">
+            <span style="font-size:18px;font-weight:600;text-align:center;">确定要返回吗？</span>
+            <div style="display:flex;gap:12px;">
+                <button class="btn-black" @onclick="ConfirmGoBack" style="flex:1;">确定</button>
+                <button class="btn-secondary" @onclick="HideBackConfirm" style="flex:1;">取消</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private System.Threading.Timer? _timer;
+    private bool showBackConfirm;
+
+    private string FormatTime(TimeSpan t) =>
+        $"{(int)t.TotalHours:D2}:{t.Minutes:D2}:{t.Seconds:D2}.{t.Milliseconds / 10:D2}";
+
+    private bool IsPersonCompleted(string person) =>
+        AppState.PersonLaps.GetValueOrDefault(person) >= AppState.TotalLaps;
+
+    private void StartTimer()
+    {
+        AppState.IsRunning = true;
+        AppState.IsPaused = false;
+        AppState.StartTime = DateTime.Now;
+        _timer = new System.Threading.Timer(_ =>
+        {
+            var elapsed = DateTime.Now - AppState.StartTime;
+            AppState.ElapsedTime = elapsed;
+            foreach (var person in AppState.SelectedPersons)
+            {
+                if (!IsPersonCompleted(person))
+                {
+                    AppState.PersonTimes[person] = elapsed;
+                }
+            }
+            InvokeAsync(StateHasChanged);
+        }, null, 0, 100);
+    }
+
+    private void PauseTimer()
+    {
+        AppState.IsPaused = true;
+        _timer?.Dispose();
+        AppState.ElapsedTime = DateTime.Now - AppState.StartTime;
+    }
+
+    private void ResumeTimer()
+    {
+        AppState.IsPaused = false;
+        AppState.StartTime = DateTime.Now - AppState.ElapsedTime;
+        _timer = new System.Threading.Timer(_ =>
+        {
+            var elapsed = DateTime.Now - AppState.StartTime;
+            AppState.ElapsedTime = elapsed;
+            foreach (var person in AppState.SelectedPersons)
+            {
+                if (!IsPersonCompleted(person))
+                {
+                    AppState.PersonTimes[person] = elapsed;
+                }
+            }
+            InvokeAsync(StateHasChanged);
+        }, null, 0, 100);
+    }
+
+    private async Task StopTimer()
+    {
+        _timer?.Dispose();
+        if (AppState.SelectedPersons.Any(p => IsPersonCompleted(p)))
+            await AppState.SaveCurrentTest();
+        AppState.Reset();
+        Navigation.NavigateTo("/");
+    }
+
+    private void ChangeLap(string person, int delta)
+    {
+        var current = AppState.PersonLaps.GetValueOrDefault(person);
+        if (current >= AppState.TotalLaps) return;
+        var newVal = current + delta;
+        if (newVal >= 0)
+            AppState.PersonLaps[person] = newVal;
+    }
+
+    private void ShowBackConfirm() => showBackConfirm = true;
+    private void HideBackConfirm() => showBackConfirm = false;
+
+    private async Task ConfirmGoBack()
+    {
+        _timer?.Dispose();
+        if (AppState.SelectedPersons.Any(p => IsPersonCompleted(p)))
+            await AppState.SaveCurrentTest();
+        AppState.Reset();
+        Navigation.NavigateTo("/mode-select");
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

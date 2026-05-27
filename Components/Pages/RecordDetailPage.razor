@@ -1,0 +1,37 @@
+@page "/record-detail/{Index:int}"
+@inject NavigationManager Navigation
+@inject AppState AppState
+
+<div class="page-container">
+    <h3 class="page-title">@_record.ModeLabel — @_record.Date.ToString("yyyy/MM/dd")</h3>
+
+    <div class="person-list">
+        @foreach (var result in _record.Results)
+        {
+            <div class="person-row win11-card">
+                <span class="btn-lap-completed">完成</span>
+                <span class="person-name">@result.Name</span>
+                <span class="person-time">@FormatTime(result.Time)</span>
+                <span class="person-laps">@result.Laps</span>
+                <span class="btn-lap-completed">完成</span>
+            </div>
+        }
+    </div>
+
+    <button class="btn-full-width btn-return" @onclick='() => Navigation.NavigateTo("/records")'>返回</button>
+</div>
+
+@code {
+    [Parameter] public int Index { get; set; }
+
+    private TestRecord _record = new();
+
+    private string FormatTime(TimeSpan t) =>
+        $"{(int)t.TotalHours:D2}:{t.Minutes:D2}:{t.Seconds:D2}.{t.Milliseconds / 10:D2}";
+
+    protected override void OnInitialized()
+    {
+        if (Index >= 0 && Index < AppState.Records.Count)
+            _record = AppState.Records[Index];
+    }
+}
