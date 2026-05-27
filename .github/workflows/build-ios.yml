@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-14
+    runs-on: macos-latest
 
     steps:
       - name: Checkout
@@ -18,8 +18,9 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Install MAUI workload
-        run: dotnet workload install maui
+      - name: Install .NET 8 MAUI workload
+        run: |
+          dotnet workload install maui --version 8.0.100
 
       - name: Build IPA
         run: |
