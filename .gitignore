@@ -1,0 +1,28 @@
+# Build outputs
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userprefs
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NuGet
+*.nupkg
+
+# Logs
+*.log
+
+# Local environment
+.env
+.env.local
